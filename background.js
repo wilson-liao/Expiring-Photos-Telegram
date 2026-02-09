@@ -1,5 +1,7 @@
 let attachedTabs = new Set();
 let patchedTabs = new Set();
+// Old Worker Name "2026.b8fb401b0f58b6ab09af.js"
+const workerName = "81.126e8b82c436e2fa8999.js";
 
 console.log("Background script loaded");
 
@@ -43,7 +45,7 @@ async function attach(tabId, tabUrl) {
       patterns: [{ requestStage: "Response", urlPattern: "*telegram.org*" }]
     });
 
-    console.log(`Debugger attached to tab ${tabId} (patching 2026 worker)`);
+    console.log(`Debugger attached to tab ${tabId} (patching ${workerName} worker)`);
 
   } catch (err) {
     console.error(`Failed to attach debugger to tab ${tabId}:`, err);
@@ -63,8 +65,7 @@ chrome.debugger.onEvent.addListener(async (source, method, params) => {
   if (method !== "Fetch.requestPaused") return;
   const { requestId, request, responseHeaders } = params;
   const tabId = source.tabId;
-  // Old Worker Name "2026.b8fb401b0f58b6ab09af.js"
-  const workerName = "81.126e8b82c436e2fa8999.js";
+
   if (!request.url.includes(workerName)) {
     await sendCommand(tabId, "Fetch.continueRequest", { requestId });
     return;
@@ -147,14 +148,12 @@ if (U.has(i) && i !== k)
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (!tab.url || !tab.url.startsWith("https://web.telegram.org/a/")) return;
 
-  // If page is reloading/navigating, reset state so we can re-patch
+  // Only attach when the page is actually reloading
   if (changeInfo.status === 'loading') {
     patchedTabs.delete(tabId);
     attachedTabs.delete(tabId);
+    await attach(tabId, tab.url);
   }
-
-  if (attachedTabs.has(tabId) || patchedTabs.has(tabId)) return; // already attached/patched
-  await attach(tabId, tab.url);
 });
 
 // Cleanup when tab is closed
