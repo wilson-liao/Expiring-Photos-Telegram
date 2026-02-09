@@ -144,15 +144,25 @@ if (U.has(i) && i !== k)
   }
 });
 
-// Attach on load/reload
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (!tab.url || !tab.url.startsWith("https://web.telegram.org/a/")) return;
+// Listen for the content script to tell us the page actually loaded
+chrome.runtime.onMessage.addListener(async (message, sender) => {
+  if (message.type === "PAGE_LOADED" && sender.tab) {
+    const tabId = sender.tab.id;
+    const url = sender.tab.url;
 
-  // Only attach when the page is actually reloading
-  if (changeInfo.status === 'loading') {
-    patchedTabs.delete(tabId);
-    attachedTabs.delete(tabId);
-    await attach(tabId, tab.url);
+    if (url && url.startsWith("https://web.telegram.org/a/")) {
+      console.log(`Page loaded in tab ${tabId}, resetting debugger state.`);
+
+      // Clear state for this tab so we can re-attach/re-patch
+      try {
+        await detach(tabId);
+      } catch (e) { /* ignore if not attached */ }
+
+      patchedTabs.delete(tabId);
+      attachedTabs.delete(tabId);
+
+      await attach(tabId, url);
+    }
   }
 });
 

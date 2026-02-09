@@ -1,4 +1,7 @@
 // content.js
+// Notify background that the page has actually loaded (not just SPA nav)
+chrome.runtime.sendMessage({ type: "PAGE_LOADED" });
+
 const s = document.createElement('script');
 s.src = chrome.runtime.getURL('inject.js'); // points to your inject.js
 s.onload = () => s.remove(); // remove after injection
