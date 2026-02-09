@@ -1,0 +1,37 @@
+{
+  "name": "Expiring-Photos-Telegram",
+  "version": "1.0",
+  "manifest_version": 3,
+  "permissions": [
+    "debugger",
+    "tabs",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://web.telegram.org/a/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "inject.js"
+      ],
+      "matches": [
+        "https://web.telegram.org/*"
+      ]
+    }
+  ]
+}

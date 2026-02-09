@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            width: 200px;
+            padding: 10px;
+            font-family: sans-serif;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+        }
+
+        button {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <label for="ttl">TTL (Seconds):</label>
+    <div style="font-size: 12px; color: #666; margin-bottom: 5px;">Range: 1-60 seconds</div>
+    <input type="number" id="ttl" min="0" max="60" placeholder="0 for off">
+    <button id="save">Save</button>
+    <button id="disable" style="margin-top: 5px; background-color: #ffcccc;">Disable (Reset to 0)</button>
+    <script src="popup.js"></script>
+</body>
+
+</html>
