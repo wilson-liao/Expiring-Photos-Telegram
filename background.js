@@ -1,7 +1,7 @@
 let attachedTabs = new Set();
 let patchedTabs = new Set();
 // Old Worker Name "2026.b8fb401b0f58b6ab09af.js"
-const workerName = "81.126e8b82c436e2fa8999.js";
+// const workerName = "81.126e8b82c436e2fa8999.js";
 
 console.log("Background script loaded");
 
@@ -45,7 +45,7 @@ async function attach(tabId, tabUrl) {
       patterns: [{ requestStage: "Response", urlPattern: "*telegram.org*" }]
     });
 
-    console.log(`Debugger attached to tab ${tabId} (patching ${workerName} worker)`);
+    console.log(`Debugger attached to tab ${tabId} (patching worker)`);
 
   } catch (err) {
     console.error(`Failed to attach debugger to tab ${tabId}:`, err);
@@ -66,10 +66,10 @@ chrome.debugger.onEvent.addListener(async (source, method, params) => {
   const { requestId, request, responseHeaders } = params;
   const tabId = source.tabId;
 
-  if (!request.url.includes(workerName)) {
-    await sendCommand(tabId, "Fetch.continueRequest", { requestId });
-    return;
-  }
+  // if (!request.url.includes(workerName)) {
+  //   await sendCommand(tabId, "Fetch.continueRequest", { requestId });
+  //   return;
+  // }
 
   if (patchedTabs.has(tabId)) {
     await sendCommand(tabId, "Fetch.continueRequest", { requestId });
@@ -80,45 +80,49 @@ chrome.debugger.onEvent.addListener(async (source, method, params) => {
     const { body, base64Encoded } = await sendCommand(tabId, "Fetch.getResponseBody", { requestId });
     let js = base64Encoded ? atob(body) : body;
 
-    // Inject global TTL listener at the top
-    // Inject global TTL listener at the top using BroadcastChannel
-    const listenerCode = `
-      self.customTTL = 0;
-      try {
-        const ttlChannel = new BroadcastChannel("tg_ttl_channel");
-        ttlChannel.onmessage = (e) => {
-          if (e.data && e.data.type === "UPDATE_TTL") {
-            self.customTTL = e.data.value;
-            console.log("Worker received custom TTL via BC:", self.customTTL);
-          }
-        };
-        // Announce ready to get immediate sync
-        setTimeout(() => ttlChannel.postMessage({ type: "WORKER_READY" }), 100);
-      } catch (e) {
-        console.error("Failed to init BroadcastChannel in worker:", e);
-      }
-    `;
-    js = listenerCode + js;
+
 
     // Patch InputMediaUploadedPhoto to include ttlSeconds from global
-    const mediaRegex = /if\s*\(\s*U\.has\(i\)\s*&&\s*i\s*!==\s*k\s*\)\s*return\s*new\s+Qe\.InputMediaUploadedPhoto\s*\(\s*\{\s*file\s*:\s*_,\s*spoiler\s*:\s*l\s*\}\s*\)\s*;/;
+    const mediaRegex = /return\s+new\s+([\w$]+)\.InputMediaUploadedPhoto\s*\(\s*\{\s*file\s*:\s*([\w$]+),\s*spoiler\s*:\s*([\w$]+)\s*\}\s*\)\s*;/;
 
     if (mediaRegex.test(js)) {
       js = js.replace(mediaRegex, `
-if (U.has(i) && i !== k)
-{
-    const ttlSeconds = self.customTTL || 0;
-    const mediaToReturn = new Qe.InputMediaUploadedPhoto({
-        file: _,
-        spoiler: l,
-        ttlSeconds
-    });
-    console.log("Applying TTL:", ttlSeconds);
-    return mediaToReturn;
-}
-`);
+        {
+            const ttlSeconds = self.customTTL || 0;
+            const mediaToReturn = new $1.InputMediaUploadedPhoto({
+                file: $2,
+                spoiler: $3,
+                ttlSeconds
+            });
+            console.log("Applying TTL:", ttlSeconds);
+            return mediaToReturn;
+        }
+        `);
+
+      // Inject global TTL listener at the top using BroadcastChannel
+      const listenerCode = `
+        self.customTTL = 0;
+        try {
+          const ttlChannel = new BroadcastChannel("tg_ttl_channel");
+          ttlChannel.onmessage = (e) => {
+            if (e.data && e.data.type === "UPDATE_TTL") {
+              self.customTTL = e.data.value;
+              console.log("Worker received custom TTL via BC:", self.customTTL);
+            }
+          };
+          // Announce ready to get immediate sync
+          setTimeout(() => ttlChannel.postMessage({ type: "WORKER_READY" }), 100);
+        } catch (e) {
+          console.error("Failed to init BroadcastChannel in worker:", e);
+        }
+      `;
+      js = listenerCode + js;
+      console.log("Patched worker code");
     }
-    console.log("Patched worker code length:", js.length);
+    else {
+      return;
+    }
+
 
     // Remove headers that can break caching
     const newHeaders = (responseHeaders || []).filter(h => {
