@@ -1,6 +1,6 @@
 # Expiring-Photos-Telegram
 
-A Chrome Extension that allows you to send **disappearing photos** (with a custom TTL) via [Telegram Web A](https://web.telegram.org/a/).
+A Chrome Extension that allows you to send **disappearing/self-destructing photos** (with a custom TTL) via [Telegram Web A](https://web.telegram.org/a/).
 
 ## Features
 - Set a custom Time-To-Live (TTL) for any photo you upload.
